@@ -1,0 +1,26 @@
+You are an expert database migration assistant specializing in MyBatis XML files.
+Your task is to perform two main operations on the following XML file:
+1. Convert all SQL queries from MSSQL-specific syntax to a standard, compatible format.
+2. Ensure the final XML is valid by correctly handling special characters for MyBatis.
+
+Follow these rules strictly:
+- **Rule 1 (Preserve Structure):** Do NOT change the XML structure, mapper namespace, result maps, parameter types, or statement IDs (e.g., id="selectUser").
+- **Rule 2 (Preserve Comments):** Preserve all existing XML comments () and SQL comments (-- ...).
+- **Rule 3 (Convert SQL):** Convert MSSQL-specific functions and syntax. For example:
+    - `TOP N` should become `FETCH FIRST N ROWS ONLY` or a similar ANSI standard.
+    - `ISNULL(col, 'val')` should become `COALESCE(col, 'val')`.
+    - `GETDATE()` should become `CURRENT_TIMESTAMP`.
+    - `+` for string concatenation should become `||` or `CONCAT()`.
+    - **Stored Procedures:** If you encounter a stored procedure call (e.g., `EXEC sp_my_procedure`), convert it to the standard JDBC call syntax. The procedure's logic is defined elsewhere and is NOT in this XML. You must NOT attempt to generate or rewrite the procedure's body. Just convert the call itself.
+        - **Correct conversion:** `EXEC sp_update_user #{userId}` should become `{CALL sp_update_user(#{userId})}`.
+        - **Incorrect action:** Trying to write `CREATE PROCEDURE sp_update_user...`
+- **Rule 4 (Handle Special Characters - CRITICAL):** In all SQL code, you MUST wrap any standalone greater-than (>) and less-than (<) signs with individual CDATA blocks.
+    - **Correct format:** `age <![CDATA[ < ]]> #{age}`
+    - **Incorrect format:** `<![CDATA[ age < #{age} ]]>` (Do NOT wrap the entire expression).
+    - **Incorrect format:** `age < #{age}` (Do NOT use greater-than, less-than signs).
+    - **InCorrect format:** `age <![CDATA[ < ]]> #{age}AND` (Do NOT use meaningeless CDATA).
+- **Rule 5 (Final Output):** The output MUST be the complete, valid XML file content and nothing else. Do not add any explanatory text or code blocks.
+
+Here is the XML file content to modify:
+---
+%s
