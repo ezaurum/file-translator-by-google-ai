@@ -14,13 +14,25 @@ Follow these rules strictly:
     - **Stored Procedures:** If you encounter a stored procedure call (e.g., `EXEC sp_my_procedure`), convert it to the standard JDBC call syntax. The procedure's logic is defined elsewhere and is NOT in this XML. You must NOT attempt to generate or rewrite the procedure's body. Just convert the call itself.
         - **Correct conversion:** `EXEC sp_update_user #{userId}` should become `{CALL sp_update_user(#{userId})}`.
         - **Incorrect action:** Trying to write `CREATE PROCEDURE sp_update_user...`
-- **Rule 4 (Handle Special Characters - CRITICAL):** In all SQL code, you MUST wrap any standalone greater-than (>) and less-than (<) signs with individual CDATA blocks.
-    - **Correct format:** `age <![CDATA[ < ]]> #{age}`
-    - **Incorrect format:** `<![CDATA[ age < #{age} ]]>` (Do NOT wrap the entire expression).
-    - **Incorrect format:** `age < #{age}` (Do NOT use greater-than, less-than signs).
-    - **InCorrect format:** `age <![CDATA[ < ]]> #{age}AND` (Do NOT use meaningeless CDATA).
-- **Rule 5 (Final Output):** The output MUST be the complete, valid XML file content and nothing else. Do not add any explanatory text or code blocks.
+
+- **Rule 4 (Handle Special Characters - CRITICAL & PRECISE):** Your goal is to ensure the XML is valid without adding unnecessary CDATA blocks. Apply CDATA wrapping ONLY to individual special characters (`<`, `>`, `&`) when they appear in SQL text. Do not wrap any other text.
+
+    - ### Correct Examples (DO THIS):
+    - `age <![CDATA[ < ]]> #{age}`
+    - `level <![CDATA[ > ]]> 5`
+    - `name = 'AT' <![CDATA[ & ]]> 'T'`
+
+    - ### Incorrect Examples (DO NOT DO THIS):
+    - **WRONG:** `<![CDATA[ age < #{age} ]]>`
+      - (Reason: You wrapped the entire expression. Only wrap the `<` character.)
+    - **WRONG:** `AND <![CDATA[ status = 'active' ]]>`
+      - (Reason: This text has no special characters and does not need CDATA.)
+    - **WRONG:** `ORDER BY <![CDATA[ create_date ]]>`
+      - (Reason: Also has no special characters.)
+
+- **Rule 5 (Final Output):** Your raw response MUST start directly with a '<' character and end with a '>' character. It must NOT contain any markdown formatting like ` + "`" + ` ``xml ` + "`" + ` or ` + "`" + ` `` ` + "`" + `. No explanations.
 
 Here is the XML file content to modify:
 ---
 %s
+
