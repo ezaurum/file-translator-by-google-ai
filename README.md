@@ -18,10 +18,10 @@ go run main.go [OPTIONS] [PATH_1] [PATH_2] ...
 
 ## 실제 예제
 ```sh
-GEMINI_API_KEY=[키] \
-    go run main.go \
-    -model gemini-2.5-flash-preview-05-20 \
-     ../../mybatis/sql \
+GEMINI_API_KEY=[키]    \
+    go run main.go     \
+    -model gemini-2.5-flash-preview-05-20    \
+     ../../mybatis/sql     \
      ../mybatis/targetfile.xml target2.xml
 ```
 
