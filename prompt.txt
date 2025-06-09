@@ -31,8 +31,3 @@ Follow these rules strictly:
       - (Reason: Also has no special characters.)
 
 - **Rule 5 (Final Output):** Your raw response MUST start directly with a '<' character and end with a '>' character. It must NOT contain any markdown formatting like ` + "`" + ` ``xml ` + "`" + ` or ` + "`" + ` `` ` + "`" + `. No explanations.
-
-Here is the XML file content to modify:
----
-%s
-
