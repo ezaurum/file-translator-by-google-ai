@@ -8,10 +8,11 @@ Google ai 호출로 지정한 디렉토리에 있는 모든 xml 파일을 수정
 GEMINI_API_KEY=[키] go run main.go -model gemini-2.5-flash-preview-05-20 ../../mybatis/sql ../mybatis/targetfile.xml target2.xml
 ```
 
- ----------
- | 플래그|	설명 | 기본값
- | -model | 사용할 Gemini 모델의 이름을 지정합니다. | gemini-1.5-pro-latest
- | -prompt | 사용할 프롬프트 파일의 경로를 지정합니다. | prompt.txt
- | -ext | 처리할 대상 파일의 확장자를 지정합니다. | .xml
- | -conflict | Git 충돌 해결 전략을 지정합니다 ('ours' 또는 'theirs').|theirs
- ---------------------
+ 
+ | 플래그|	설명 | 기본값 |
+ |---------|----------|------------|
+ | -model | 사용할 Gemini 모델의 이름을 지정합니다. | gemini-1.5-pro-latest |
+ | -prompt | 사용할 프롬프트 파일의 경로를 지정합니다. | prompt.txt |
+ | -ext | 처리할 대상 파일의 확장자를 지정합니다. | .xml | 
+ | -conflict | Git 충돌 해결 전략을 지정합니다 ('ours' 또는 'theirs'). | theirs |
+ 
