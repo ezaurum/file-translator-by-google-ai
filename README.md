@@ -4,6 +4,16 @@ Google ai 호출로 지정한 디렉토리에 있는 모든 xml 파일을 수정
 
 예제는 mybatis로 되어 있고, prompt.txt를 불러들여서 적용하므로 다른 형태의 파일에도 적용가능.
 
+# 사용법
+프로그램은 go run 명령어로 실행하며, 기본적인 사용 형식은 다음과 같습니다.
+
+```sh
+
+go run main.go [OPTIONS] [PATH_1] [PATH_2] ...
+```
+   - [OPTIONS]: 실행 옵션을 지정하는 플래그들입니다. (아래 '커맨드 라인 옵션' 참조)
+   - [PATH_...]: 처리할 파일 또는 디렉토리의 경로입니다. 공백으로 구분하여 여러 개를 지정할 수 있습니다.
+
 ```sh
 GEMINI_API_KEY=[키] go run main.go -model gemini-2.5-flash-preview-05-20 ../../mybatis/sql ../mybatis/targetfile.xml target2.xml
 ```
