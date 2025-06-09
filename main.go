@@ -21,6 +21,35 @@ const maxPathDisplayLength = 60
 
 // --- Helper Functions (변경 없음) ---
 
+func resolveGitConflict(content string, strategy string) (resolvedContent string, wasConflicted bool) {
+	if !strings.Contains(content, "<<<<<<< HEAD") || !strings.Contains(content, "=======") {
+		return content, false
+	}
+	lines := strings.Split(content, "\n")
+	var resultLines []string
+	var inConflictBlock, shouldKeep bool
+	for _, line := range lines {
+		if strings.HasPrefix(line, "<<<<<<< HEAD") {
+			inConflictBlock = true
+			shouldKeep = (strategy == "ours")
+			continue
+		}
+		if strings.HasPrefix(line, "=======") && inConflictBlock {
+			shouldKeep = (strategy == "theirs")
+			continue
+		}
+		if strings.HasPrefix(line, ">>>>>>>") && inConflictBlock {
+			inConflictBlock = false
+			shouldKeep = false
+			continue
+		}
+		if !inConflictBlock || shouldKeep {
+			resultLines = append(resultLines, line)
+		}
+	}
+	return strings.Join(resultLines, "\n"), true
+}
+
 func truncatePath(path string, maxLength int) string {
 	if len(path) <= maxLength {
 		return path
@@ -53,7 +82,7 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%d분 %d초", m, s)
 }
 
-func processFile(ctx context.Context, model *genai.GenerativeModel, filePath string, promptTemplate string) error {
+func processFile(ctx context.Context, model *genai.GenerativeModel, filePath string, promptTemplate string, conflictStrategy string) error {
 	originalContent, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Printf("\n오류: %s 파일 읽기 실패: %v", filePath, err)
@@ -62,7 +91,12 @@ func processFile(ctx context.Context, model *genai.GenerativeModel, filePath str
 	if len(originalContent) == 0 {
 		return nil
 	}
-	prompt := fmt.Sprintf(promptTemplate, string(originalContent))
+	stringContent := string(originalContent)
+	resolvedContent, wasConflicted := resolveGitConflict(stringContent, conflictStrategy)
+	if wasConflicted {
+		log.Printf("\n알림: %s 파일에서 Git 충돌을 발견하여 '%s' 버전으로 자동 해결했습니다.", filePath, conflictStrategy)
+	}
+	prompt := fmt.Sprintf(promptTemplate, resolvedContent)
 	resp, err := model.GenerateContent(ctx, genai.Text(prompt))
 	if err != nil {
 		log.Printf("\n오류: %s 파일의 Gemini API 호출 실패: %v", filePath, err)
@@ -88,24 +122,44 @@ func processFile(ctx context.Context, model *genai.GenerativeModel, filePath str
 
 // --- main 함수 ---
 func main() {
-	var modelName string
-	flag.StringVar(&modelName, "model", "gemini-1.5-pro-latest", "사용할 Gemini 모델의 이름을 지정합니다 (e.g., gemini-1.5-flash-latest)")
+	// --- 1. 플래그 정의 ---
+	var modelName, conflictStrategy, promptFile, fileExt string
+	
+	flag.StringVar(&modelName, "model", "gemini-1.5-pro-latest", "사용할 Gemini 모델의 이름을 지정합니다.")
+	// CHANGED: 기본값을 'theirs'로 변경
+	flag.StringVar(&conflictStrategy, "conflict", "theirs", "Git 충돌 해결 전략을 지정합니다 ('ours' 또는 'theirs').")
+	// NEW: 프롬프트 파일을 지정하는 플래그
+	flag.StringVar(&promptFile, "prompt", "prompt.txt", "사용할 프롬프트 파일의 경로를 지정합니다.")
+	// NEW: 파일 확장자를 지정하는 플래그
+	flag.StringVar(&fileExt, "ext", ".xml", "처리할 대상 파일의 확장자를 지정합니다 (e.g., .sql).")
+	
 	flag.Parse()
 
+	// --- 2. 설정값 검증 및 처리 ---
+	if conflictStrategy != "ours" && conflictStrategy != "theirs" {
+		log.Fatal("-conflict 플래그는 'ours' 또는 'theirs'만 허용됩니다.")
+	}
+	// NEW: 사용자가 점(.)을 빼먹어도 자동으로 추가
+	if !strings.HasPrefix(fileExt, ".") {
+		fileExt = "." + fileExt
+	}
+	
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	if apiKey == "" {
 		log.Fatal("환경변수 'GEMINI_API_KEY'가 설정되지 않았습니다.")
 	}
 	if flag.NArg() < 1 {
-		log.Fatal("하나 이상의 대상 파일 또는 디렉토리 경로를 입력해주세요.\n사용법: go run main.go [-model 모델이름] [파일/디렉토리 경로] ...")
+		log.Fatal("하나 이상의 대상 파일 또는 디렉토리 경로를 입력해주세요.\n사용법: go run main.go [옵션...] [파일/디렉토리 경로] ...")
 	}
-
-	promptBytes, err := os.ReadFile("prompt.txt")
+	
+	// CHANGED: 플래그로 받은 프롬프트 파일 경로 사용
+	promptBytes, err := os.ReadFile(promptFile)
 	if err != nil {
-		log.Fatalf("프롬프트 파일(prompt.txt)을 읽는 중 오류 발생: %v", err)
+		log.Fatalf("프롬프트 파일(%s)을 읽는 중 오류 발생: %v", promptFile, err)
 	}
 	promptTemplate := string(promptBytes)
 
+	// --- 3. 처리할 파일 목록 수집 ---
 	log.Println("처리할 파일 목록을 수집 중입니다...")
 	var filesToProcess []string
 	for _, pathArg := range flag.Args() {
@@ -119,7 +173,8 @@ func main() {
 				if err != nil {
 					return err
 				}
-				if !info.IsDir() && strings.HasSuffix(strings.ToLower(info.Name()), ".xml") {
+				// CHANGED: 플래그로 받은 확장자 사용
+				if !info.IsDir() && strings.HasSuffix(strings.ToLower(info.Name()), fileExt) {
 					filesToProcess = append(filesToProcess, path)
 				}
 				return nil
@@ -144,10 +199,11 @@ func main() {
 
 	totalFiles := len(filesToProcess)
 	if totalFiles == 0 {
-		log.Println("처리할 .xml 파일을 찾지 못했습니다.")
+		log.Printf("처리할 %s 파일을 찾지 못했습니다.", fileExt)
 		return
 	}
 	
+	// --- 4. Gemini 클라이언트 초기화 및 작업 시작 ---
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx,
 		option.WithAPIKey(apiKey),
@@ -157,8 +213,12 @@ func main() {
 		log.Fatalf("Gemini 클라이언트 생성 실패: %v", err)
 	}
 	defer client.Close()
-
+	
 	log.Printf("사용할 모델: %s", modelName)
+	log.Printf("Git 충돌 해결 전략: %s", conflictStrategy)
+	log.Printf("사용할 프롬프트: %s", promptFile)
+	log.Printf("대상 확장자: %s", fileExt)
+	
 	model := client.GenerativeModel(modelName)
 	model.SetTemperature(0.1)
 
@@ -168,11 +228,11 @@ func main() {
 	log.Printf("예상 소요 시간: 약 %s", formatDuration(estimatedDuration))
 	log.Println("작업을 시작합니다...")
 
+	// --- 5. 파일 처리 루프 ---
 	processedCount := 0
 	startTime := time.Now()
 
 	for _, path := range filesToProcess {
-		// --- CHANGED: 파일 처리 전에 진행률을 먼저 표시하도록 순서 변경 ---
 		processedCount++
 		elapsed := time.Since(startTime)
 		progress := float64(processedCount) / float64(totalFiles)
@@ -186,17 +246,16 @@ func main() {
 			formatDuration(elapsed),
 		)
 
-		// 이제 화면에 "처리중"이 표시된 상태에서 아래 함수가 실행됩니다.
-		if err := processFile(ctx, model, path, promptTemplate); err != nil {
-			// 오류 로그는 processFile 내부에서 처리되므로 여기서는 별도 처리가 필요 없습니다.
+		if err := processFile(ctx, model, path, promptTemplate, conflictStrategy); err != nil {
+			//
 		}
 
-		// 마지막 파일 처리가 끝난 후에는 대기하지 않습니다.
 		if processedCount < totalFiles {
 			time.Sleep(sleepDelaySeconds * time.Second)
 		}
 	}
 	
+	// --- 6. 최종 결과 출력 ---
 	fmt.Println() 
 	log.Println("모든 작업이 완료되었습니다.")
 	log.Printf("총 경과 시간: %s", formatDuration(time.Since(startTime)))
