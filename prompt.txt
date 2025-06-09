@@ -15,12 +15,14 @@ Follow these rules strictly:
         - **Correct conversion:** `EXEC sp_update_user #{userId}` should become `{CALL sp_update_user(#{userId})}`.
         - **Incorrect action:** Trying to write `CREATE PROCEDURE sp_update_user...`
 
-- **Rule 4 (Handle Special Characters - CRITICAL & PRECISE):** Your goal is to ensure the XML is valid without adding unnecessary CDATA blocks. Apply CDATA wrapping ONLY to individual special characters (`<`, `>`, `&`) when they appear in SQL text. Do not wrap any other text.
+- **Rule 4 (Handle Special Characters - CRITICAL & PRECISE):** Your goal is to ensure the XML is valid without adding unnecessary CDATA blocks. Apply CDATA wrapping ONLY to some special characters (`<`, `>`, `&`, `<>`, `<=`) when they appear in SQL text. Do not wrap any other text.
 
     - ### Correct Examples (DO THIS):
     - `age <![CDATA[ < ]]> #{age}`
     - `level <![CDATA[ > ]]> 5`
     - `name = 'AT' <![CDATA[ & ]]> 'T'`
+    - `name <![CDATA[ <> ]]> 'T'`
+    - `level <![CDATA[ <= ]]> 10`
 
     - ### Incorrect Examples (DO NOT DO THIS):
     - **WRONG:** `<![CDATA[ age < #{age} ]]>`
