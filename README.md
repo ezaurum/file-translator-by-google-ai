@@ -33,3 +33,6 @@ GEMINI_API_KEY=[키]    \
  | -ext | 처리할 대상 파일의 확장자를 지정합니다. | .xml | 
  | -conflict | Git 충돌 해결 전략을 지정합니다 ('ours' 또는 'theirs'). | theirs |
  
+# 프롬프트
+prompt.txt를 참조하여 새로 만들거나, 이전 prompt.txt를 사용할 수 있음.
+지시사항만 집어넣으면 됨
